@@ -1,22 +1,19 @@
-const CACHE_NAME = 'nyctc-offline-v1';
-// List all files you want to work offline
+const CACHE_NAME = 'nyctc-v' + Date.now(); // Forces a new cache name every time it's re-installed
 const ASSETS = [
   './',
   './index.html',
   './logo.jpeg'
 ];
 
-// 1. Install Phase: Save files to the browser cache
+// 1. Install Phase: Cache the current files
 self.addEventListener('install', (event) => {
+  self.skipWaiting(); // Forces the new service worker to become active immediately
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('Caching assets for offline use');
-      return cache.addAll(ASSETS);
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
   );
 });
 
-// 2. Activate Phase: Clean up old caches if you update the version
+// 2. Activate Phase: Delete all OLD caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -27,12 +24,12 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// 3. Fetch Phase: If internet is off, load from the Cache
+// 3. Fetch Phase: NETWORK FIRST strategy
+// This looks for the update online FIRST. If it fails (offline), it takes the cache.
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      // Return the cached file OR try to get it from the network
-      return response || fetch(event.request);
+    fetch(event.request).catch(() => {
+      return caches.match(event.request);
     })
   );
 });
